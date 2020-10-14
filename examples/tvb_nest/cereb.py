@@ -7,7 +7,7 @@ from tvb.basic.profile import TvbProfile
 TvbProfile.set_profile(TvbProfile.LIBRARY_PROFILE)
 
 from tvb_multiscale.tvb_nest.config import CONFIGURED, Config
-from examples.tvb_nest.example import results_path_fun
+from examples.tvb_nest.example import results_path_fun, get_tvb_model_param
 from examples.plot_write_results import plot_write_results
 from tvb_multiscale.tvb_nest.nest_models.builders.models.cereb import CerebBuilder
 from tvb_multiscale.tvb_nest.interfaces.builders.models.red_ww_cereb import RedWWexcIOBuilder
@@ -52,10 +52,21 @@ def main_example(tvb_sim_model, nest_model_builder, tvb_nest_builder, nest_nodes
     # Build a NEST network model with the corresponding builder
     # Using all default parameters for this example
     nest_model_builder = \
-        nest_model_builder(simulator, nest_nodes_ids,
+        nest_model_builder(nest_nodes_ids,
                            os.path.join(os.getcwd().split("tvb_nest")[0],
                                         "tvb_nest", "../data", "cerebellar_cortex_scaffold_dcn.hdf5"),
-                           config=config, set_defaults=True)
+                           config=config, set_defaults=True,
+                           tvb_dt=simulator.integrator.dt,
+                           tvb_model=simulator.model.__class__.__name__,
+                           tvb_weights=simulator.connectivity.weights[nest_nodes_ids][:, nest_nodes_ids],
+                           tvb_delays=simulator.connectivity.delays[nest_nodes_ids][:, nest_nodes_ids],
+                           region_labels=simulator.connectivity.region_labels,
+                           number_of_regions=simulator.connectivity.number_of_regions,
+                           monitor_period=simulator.monitors[0].period,
+                           coupling_a=simulator.coupling.a[0].item(),
+                           G=get_tvb_model_param(simulator.model, "G"),
+                           lamda=get_tvb_model_param(simulator.model, "lamda")
+                           )
     nest_model_builder.modules_to_install = ["cereb"]
     if tvb_nest_builder is not None:
         nest_model_builder.STIMULUS = False

@@ -134,9 +134,9 @@ class CerebBuilder(NESTModelBuilder):
     neuron_types = []
     start_id_scaffold = []
 
-    def __init__(self, tvb_simulator, nest_nodes_ids, path_to_network_source_file,
-                 nest_instance=None, config=CONFIGURED, set_defaults=True):
-        super(CerebBuilder, self).__init__(tvb_simulator, nest_nodes_ids, nest_instance, config)
+    def __init__(self, nest_nodes_ids, path_to_network_source_file,
+                 nest_instance=None, config=CONFIGURED, set_defaults=True, **tvb_params):
+        super(CerebBuilder, self).__init__(nest_nodes_ids, nest_instance, config, **tvb_params)
         self.nest_nodes_ids = nest_nodes_ids
         self.path_to_network_source_file = path_to_network_source_file
         # Common order of neurons' number per population:

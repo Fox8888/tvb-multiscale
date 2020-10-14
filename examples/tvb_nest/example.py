@@ -37,6 +37,13 @@ def results_path_fun(nest_model_builder, tvb_nest_builder, tvb_to_nest_mode="rat
         return config.out.FOLDER_RES
 
 
+def get_tvb_model_param(model, param):
+    try:
+        return getattr(model, param)[0].item()
+    except:
+        return None
+
+
 def main_example(tvb_sim_model, nest_model_builder, tvb_nest_builder,
                  nest_nodes_ids, nest_populations_order=100,
                  tvb_to_nest_mode="rate", nest_to_tvb=True, exclusive_nodes=True,
@@ -67,7 +74,19 @@ def main_example(tvb_sim_model, nest_model_builder, tvb_nest_builder,
 
     # Build a NEST network model with the corresponding builder
     # Using all default parameters for this example
-    nest_model_builder = nest_model_builder(simulator, nest_nodes_ids, config=config)
+    nest_model_builder = \
+        nest_model_builder(nest_nodes_ids, config=config,
+                           tvb_dt=simulator.integrator.dt,
+                           tvb_model=simulator.model.__class__.__name__,
+                           tvb_weights=simulator.connectivity.weights[nest_nodes_ids][:, nest_nodes_ids],
+                           tvb_delays=simulator.connectivity.delays[nest_nodes_ids][:, nest_nodes_ids],
+                           region_labels=simulator.connectivity.region_labels,
+                           number_of_regions=simulator.connectivity.number_of_regions,
+                           monitor_period=simulator.monitors[0].period,
+                           coupling_a=simulator.coupling.a[0].item(),
+                           G=get_tvb_model_param(simulator.model, "G"),
+                           lamda=get_tvb_model_param(simulator.model, "lamda")
+                           )
     nest_model_builder.population_order = nest_populations_order
     populations = []
     populations_sizes = []
