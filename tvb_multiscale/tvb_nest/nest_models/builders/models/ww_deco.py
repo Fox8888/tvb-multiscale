@@ -9,7 +9,7 @@ from tvb_multiscale.core.spiking_models.builders.templates import tvb_delay, rec
 
 class WWDeco2013Builder(DefaultExcIOInhIMultisynapseBuilder):
 
-    def __init__(self, tvb_simulator, nest_nodes_ids, nest_instance=None, config=CONFIGURED, set_defaults=True,
+    def __init__(self, nest_nodes_ids, nest_instance=None, config=CONFIGURED, set_defaults=True,
                  V_th=-50.0,  # mV
                  V_reset=-55.0,  # mV
                  E_L=-70.0,  # mV
@@ -39,11 +39,12 @@ class WWDeco2013Builder(DefaultExcIOInhIMultisynapseBuilder):
                  tau_decay_GABA=10.0,  # ms
                  w_EE=1.55, w_IE=1.0,
                  stimulus_spike_rate=2180.0,  # Hz
-                 **kwargs
+                 **tvb_params,
                  ):
-
-        super(WWDeco2013Builder, self).__init__(tvb_simulator, nest_nodes_ids, nest_instance, config,
-                                                set_defaults=False)
+        # if we use Reduced Wong Wang model, we also need to multiply with the global coupling constant G:
+        self.global_coupling_scaling *= tvb_params.pop("G", 20.0)
+        super(WWDeco2013Builder, self).__init__(nest_nodes_ids, nest_instance, config,
+                                                set_defaults=False, **tvb_params)
 
         self.default_population["model"] = "iaf_cond_ww_deco"
 
@@ -117,7 +118,7 @@ class WWDeco2013Builder(DefaultExcIOInhIMultisynapseBuilder):
             "V_th": V_th, "V_reset": V_reset, "E_L": E_L, "E_ex": E_ex, "E_in": E_in,
             "tau_decay_AMPA": tau_decay_AMPA, "tau_decay_GABA_A": tau_decay_GABA,
             "tau_decay_NMDA": tau_decay_NMDA, "tau_rise_NMDA": tau_rise_NMDA,
-            "s_AMPA_ext_max": N_E * np.ones((self.number_of_nodes,)).astype("f")
+            "s_AMPA_ext_max": N_E * np.ones((self.number_of_regions,)).astype("f")
         }
         params_E = dict(common_params)
         params_E.update({
@@ -147,7 +148,7 @@ class WWDeco2013Builder(DefaultExcIOInhIMultisynapseBuilder):
                        "s_AMPA", "x_NMDA", "s_NMDA", "s_GABA",
                        "I_AMPA", "I_NMDA", "I_GABA", "I_L", "I_e",
                        "spikes_exc", "spikes_inh"]
-        for i_node in range(self.number_of_nodes):
+        for i_node in range(self.number_of_regions):
             record_from.append("s_AMPA_ext_%d" % i_node)
             record_from.append("I_AMPA_ext_%d" % i_node)
             record_from.append("spikes_exc_ext_%d" % i_node)
@@ -211,7 +212,7 @@ class WWDeco2013Builder(DefaultExcIOInhIMultisynapseBuilder):
 
 class WWDeco2014Builder(WWDeco2013Builder):
 
-    def __init__(self, tvb_simulator, nest_nodes_ids, nest_instance=None, config=CONFIGURED, set_defaults=True,
+    def __init__(self, nest_nodes_ids, nest_instance=None, config=CONFIGURED, set_defaults=True,
                  V_th=-50.0,  # mV
                  V_reset=-55.0,  # mV
                  E_L=-70.0,  # mV
@@ -240,24 +241,18 @@ class WWDeco2014Builder(WWDeco2013Builder):
                  # inh spikes (GABA):
                  tau_decay_GABA=10.0,  # ms
                  stimulus_spike_rate=2400.0,  # Hz
-                 **kwargs
+                 w_EE=1.55, w_IE=1.0,
+                 **tvb_params
                  ):
-
-        super(WWDeco2014Builder, self).__init__(tvb_simulator, nest_nodes_ids, nest_instance, config,
-                                                set_defaults=False)
+        self.lamda = tvb_params.pop("lamda", 0.0)
+        w_EE = tvb_params.pop("w_p", w_EE)
+        w_IE = tvb_params.pop("J_i", w_IE)
+        super(WWDeco2014Builder, self).__init__(nest_nodes_ids, nest_instance, config, set_defaults=False, **tvb_params)
 
         self.default_population["model"] = "iaf_cond_ww_deco"
 
         self.scale_e = 1.6
         self.scale_i = 0.4
-
-        self.lamda = self.tvb_model.lamda[0].item()
-        w_EE = kwargs.get("w_EE",
-                          kwargs.get("w_p",
-                                     getattr(self.tvb_model, "w_p", np.array([1.4, ]))[0].item()))
-        w_IE = kwargs.get("w_IE",
-                          kwargs.get("J_i",
-                                     getattr(self.tvb_model, "J_i", np.array([1.0, ]))[0].item()))
 
         if set_defaults:
             self._set_defaults(V_th, V_reset, E_L, E_ex, E_in,

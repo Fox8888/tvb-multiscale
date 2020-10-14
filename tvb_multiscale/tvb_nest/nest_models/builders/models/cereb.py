@@ -82,7 +82,7 @@ class CerebBuilder(NESTModelBuilder):
                      'tau_syn2': tau_inh['dcn']}}
 
     # Connection weights
-    conn_weights = {'mossy_to_glomerulus': 1.0, 'ascending_axon_to_golgi': 0.05, 'ascending_axon_to_purkinje': 0.175,
+    tvb_weights = {'mossy_to_glomerulus': 1.0, 'ascending_axon_to_golgi': 0.05, 'ascending_axon_to_purkinje': 0.175,
                     'basket_to_purkinje': 3.638,
                     'glomerulus_to_golgi': 0.0125, 'glomerulus_to_granule': 0.361, 'golgi_to_granule': 0.338,
                     'parallel_fiber_to_basket': 0.002, 'parallel_fiber_to_golgi': 0.008,
@@ -91,7 +91,7 @@ class CerebBuilder(NESTModelBuilder):
                     'mossy_to_dcn': 0.5, 'purkinje_to_dcn': 0.45}
 
     # Connection delays
-    conn_delays = {'mossy_to_glomerulus': 1.0, 'ascending_axon_to_golgi': 2.0, 'ascending_axon_to_purkinje': 2.0,
+    tvb_delays = {'mossy_to_glomerulus': 1.0, 'ascending_axon_to_golgi': 2.0, 'ascending_axon_to_purkinje': 2.0,
                    'basket_to_purkinje': 4.0,
                    'glomerulus_to_golgi': 4.0, 'glomerulus_to_granule': 4.0, 'golgi_to_granule': 2.0,
                    'parallel_fiber_to_basket': 5.0, 'parallel_fiber_to_golgi': 5.0, 'parallel_fiber_to_purkinje': 5.0,

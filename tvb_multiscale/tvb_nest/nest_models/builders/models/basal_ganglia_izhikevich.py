@@ -27,8 +27,12 @@ class TVBWeightFun(object):
 
 class BasalGangliaIzhikevichBuilder(NESTModelBuilder):
 
-    def __init__(self, tvb_simulator, nest_nodes_ids, nest_instance=None, config=CONFIGURED):
-        super(BasalGangliaIzhikevichBuilder, self).__init__(tvb_simulator, nest_nodes_ids, nest_instance, config)
+    def __init__(self, nest_nodes_ids, nest_instance=None, config=CONFIGURED, **tvb_params):
+        # NOTE!!! TAKE CARE OF DEFAULT simulator.coupling.a!
+        self.global_coupling_scaling = tvb_params.pop("coupling_a", 1.0 / 256.0)
+        # if we use Reduced Wong Wang model, we also need to multiply with the global coupling constant G:
+        self.global_coupling_scaling *= tvb_params.pop("G", 20.0)
+        super(BasalGangliaIzhikevichBuilder, self).__init__(nest_nodes_ids, nest_instance, config, **tvb_params)
         self.default_population["model"] = "izhikevich_hamker"
 
         # Common order of neurons' number per population:
@@ -87,11 +91,6 @@ class BasalGangliaIzhikevichBuilder(NESTModelBuilder):
                      "synapse_model": synapse_model, "conn_spec": conn_spec,
                      "weight": -1.0, "delay": self.default_min_delay,  # 0.001
                      "receptor_type": 0, "nodes": pop["nodes"]})
-
-        # NOTE!!! TAKE CARE OF DEFAULT simulator.coupling.a!
-        self.global_coupling_scaling = self.tvb_simulator.coupling.a[0].item()
-        # if we use Reduced Wong Wang model, we also need to multiply with the global coupling constant G:
-        self.global_coupling_scaling *= self.tvb_simulator.model.G[0].item()
 
         # Inter-regions'-nodes' connections
         self.nodes_connections = []

@@ -32,8 +32,8 @@ class NESTModelBuilder(SpikingModelBuilder):
     modules_to_install = []
     _spiking_brain = NESTBrain()
 
-    def __init__(self, tvb_simulator, nest_nodes_ids, nest_instance=None, config=CONFIGURED, logger=LOG):
-        super(NESTModelBuilder, self).__init__(tvb_simulator, nest_nodes_ids, config, logger)
+    def __init__(self, nest_nodes_ids, nest_instance=None, config=CONFIGURED, logger=LOG, **tvb_params):
+        super(NESTModelBuilder, self).__init__(nest_nodes_ids, config, logger, **tvb_params)
         # Setting or loading a nest instance:
         if nest_instance is not None:
             self.nest_instance = nest_instance

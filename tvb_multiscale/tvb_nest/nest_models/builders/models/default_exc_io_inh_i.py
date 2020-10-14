@@ -12,8 +12,10 @@ from tvb_multiscale.core.spiking_models.builders.templates import random_normal_
 
 class DefaultExcIOInhIBuilder(NESTModelBuilder):
 
-    def __init__(self, tvb_simulator, nest_nodes_ids, nest_instance=None, config=CONFIGURED, set_defaults=True):
-        super(DefaultExcIOInhIBuilder, self).__init__(tvb_simulator, nest_nodes_ids, nest_instance, config)
+    def __init__(self, nest_nodes_ids, nest_instance=None, config=CONFIGURED, set_defaults=True, **tvb_params):
+        # NOTE!!! TAKE CARE OF DEFAULT simulator.coupling.a!
+        self.global_coupling_scaling = tvb_params.pop("coupling_a", 1.0 / 256.0)
+        super(DefaultExcIOInhIBuilder, self).__init__(nest_nodes_ids, nest_instance, config, **tvb_params)
 
         # Common order of neurons' number per population:
         self.population_order = 100
@@ -29,9 +31,6 @@ class DefaultExcIOInhIBuilder(NESTModelBuilder):
         self.d_ei = self.within_node_delay()
         self.d_ie = self.within_node_delay()
         self.d_ii = self.within_node_delay()
-
-        # NOTE!!! TAKE CARE OF DEFAULT simulator.coupling.a!
-        self.global_coupling_scaling = self.tvb_simulator.coupling.a[0].item()
 
         self.params_E = {}
         self.params_I = {}
@@ -220,27 +219,23 @@ class DefaultExcIOInhIBuilder(NESTModelBuilder):
 
 class DefaultExcIOInhIMultisynapseBuilder(DefaultExcIOInhIBuilder):
 
-    def __init__(self, tvb_simulator, nest_nodes_ids, nest_instance=None, config=CONFIGURED, set_defaults=True,
-                 **kwargs):
+    def __init__(self, nest_nodes_ids, nest_instance=None, config=CONFIGURED, set_defaults=True,
+                 E_ex=0.0, E_in=-85.0, tau_syn_ex=0.2, tau_syn_in=2.0, **tvb_params):
 
         super(DefaultExcIOInhIMultisynapseBuilder, self).__init__(
-            tvb_simulator, nest_nodes_ids, nest_instance, config, set_defaults=False)
+            nest_nodes_ids, nest_instance, config, set_defaults=False **tvb_params)
 
         self.default_population["model"] = "aeif_cond_alpha_multisynapse"
 
         self.w_ie = self.weight_fun(1.0)
         self.w_ii = self.weight_fun(1.0)
 
-        E_ex = kwargs.get("E_ex", 0.0)
-        E_in = kwargs.get("E_ex", -85.0)
-        tau_syn_ex = kwargs.get("tau_syn_ex", 0.2)
-        tau_syn_in = kwargs.get("tau_syn_in", 2.0)
         E_rev = np.array([E_ex] +  # exc local spikes
                          [E_in] +  # inh local spikes
-                         self.number_of_nodes * [E_ex])  # ext, exc spikes
+                         self.number_of_regions * [E_ex])  # ext, exc spikes
         tau_syn = np.array([tau_syn_ex] +  # exc spikes
                            [tau_syn_in] +  # inh spikes
-                           self.number_of_nodes * [tau_syn_ex])  # ext, exc spikes
+                           self.number_of_regions * [tau_syn_ex])  # ext, exc spikes
         self.params_E = {"E_rev": E_rev, "tau_syn": tau_syn}
         self.params_I = self.params_E
 

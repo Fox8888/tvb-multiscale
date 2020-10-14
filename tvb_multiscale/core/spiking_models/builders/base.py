@@ -6,7 +6,6 @@ import numpy as np
 from pandas import Series
 
 from tvb_multiscale.core.config import CONFIGURED, initialize_logger
-from tvb_multiscale.core.spiking_models.region_node import SpikingRegionNode
 from tvb_multiscale.core.spiking_models.brain import SpikingBrain
 from tvb.contrib.scripts.utils.log_error_utils import raise_value_error
 from tvb.contrib.scripts.utils.data_structures_utils import ensure_list, flatten_tuple, property_to_fun
@@ -28,19 +27,17 @@ class SpikingModelBuilder(object):
     # Default configuratons modifiable by the user:
     config = CONFIGURED
 
-    tvb_to_spiking_dt_ratio = 4
-    default_min_spiking_dt = 0.001
-    default_min_delay_ratio = 2
-    default_min_delay = 0.001
-    default_population = {}
-    default_populations_connection = {}
-    default_nodes_connection = {}
-    default_devices_connection = {}
-
-    population_order = 100
+    # Inputs from TVB (**tvb_params):
+    tvb_dt = 0.1
+    monitor_period = 1.0  # ms
+    tvb_weights = np.array([])
+    tvb_delays = np.array([])
+    number_of_regions = 1
+    region_labels = np.array([])
+    tvb_model = ""
 
     # User inputs:
-    tvb_simulator = None
+    population_order = 100
     spiking_nodes_ids = []
     populations = []
     populations_connections = []
@@ -48,10 +45,19 @@ class SpikingModelBuilder(object):
     output_devices = [] # Use these to observe Spiking Simulator behavior
     input_devices = []  # use these for possible external stimulation devices
 
-    # Internal configurations and outputs:
-    monitor_period = 1.0
-    spiking_dt = 0.1 / tvb_to_spiking_dt_ratio
-    _spiking_nodes_labels = []
+    # Default configurations:
+    default_min_spiking_dt = 0.001
+    default_min_delay_ratio = 2
+    default_min_delay = 0.001
+    default_population = {}
+    default_populations_connection = {}
+    default_nodes_connection = {}
+    default_devices_connection = {}
+    tvb_to_spiking_dt_ratio = 2
+    spiking_dt = tvb_dt / tvb_to_spiking_dt_ratio
+    spiking_nodes_labels = np.array([])
+
+    # Outputs:
     _populations = []
     _populations_connections = []
     _nodes_connections = []
@@ -60,16 +66,27 @@ class SpikingModelBuilder(object):
     _spiking_brain = SpikingBrain()
     _models = []
 
-    def __init__(self, tvb_simulator, spiking_nodes_ids, config=CONFIGURED, logger=LOG):
+    def __init__(self, spiking_nodes_ids, config=CONFIGURED, logger=LOG, **tvb_params):
         self.config = config
         self.logger = logger
         self.spiking_nodes_ids = np.unique(spiking_nodes_ids)
-        self.tvb_simulator = tvb_simulator
+        number_of_spiking_nodes = self.number_of_spiking_nodes
+        self.tvb_dt = tvb_params.get("dt", 0.1)
+        conn_shape = (number_of_spiking_nodes, number_of_spiking_nodes)
+        dummy_conn = np.ones(conn_shape)
+        self.tvb_weights = tvb_params.get("weights", 0.0 * dummy_conn)
+        self.tvb_delays = tvb_params.get("delays", self.tvb.dt * dummy_conn)
+        self.number_of_regions = tvb_params.get("number_of_regions", number_of_spiking_nodes)
+        self.region_labels = tvb_params.get("region_labels",
+                                            np.array(["Region-%d" % i_region
+                                                      for i_region in range(self.number_of_regions)]))
+        self.spiking_nodes_labels = self.region_labels[self.spiking_nodes_ids]
+        self.tvb_model = tvb_params.get("model", "")
         self._update_spiking_dt()
         self._update_default_min_delay()
         # We assume that there at least the Raw monitor which is also used for communication to/from Spiking Simulator
         # If there is only the Raw monitor, then self.monitor_period = self.tvb_dt
-        self.monitor_period = tvb_simulator.monitors[-1].period
+        self.monitor_period = tvb_params.get("monitor_period", self.tvb_dt)
         self.population_order = 100
         self._models = []
         self._spiking_brain = SpikingBrain()
@@ -150,49 +167,18 @@ class SpikingModelBuilder(object):
         pass
 
     @property
-    def tvb_model(self):
-        return self.tvb_simulator.model
-
-    @property
-    def tvb_connectivity(self):
-        return self.tvb_simulator.connectivity
-
-    @property
-    def tvb_weights(self):
-        return self.tvb_simulator.connectivity.weights
-
-    @property
-    def tvb_delays(self):
-        return self.tvb_simulator.connectivity.delays
-
-    @property
-    def tvb_dt(self):
-        return self.tvb_simulator.integrator.dt
-
-    @property
-    def number_of_nodes(self):
-        return self.tvb_connectivity.number_of_regions
-
-    @property
     def number_of_spiking_nodes(self):
         return np.maximum(len(self.spiking_nodes_ids), 1)
 
     # The methods below are used in order to return the builder's properties
     # per spiking node or spiking nodes' connection
 
-    @property
-    def spiking_nodes_labels(self):
-        if len(self._spiking_nodes_labels) == self.number_of_spiking_nodes:
-            return self._spiking_nodes_labels
-        else:
-            return self.tvb_connectivity.region_labels[self.spiking_nodes_ids]
-
     def _population_property_per_node(self, property):
         output = OrderedDict()
         for population in self.populations:
             output[population["label"]] = property_per_node(population[property],
                                                             population.get("nodes", self.spiking_nodes_ids),
-                                                            self.tvb_connectivity.region_labels)
+                                                            self.spiking_nodes_labels)
         return output
 
     @property
@@ -234,8 +220,7 @@ class SpikingModelBuilder(object):
         output = OrderedDict()
         for conn in connections:
             output[self._connection_label(conn)] = \
-                property_per_node(conn[property], conn.get("nodes", self.spiking_nodes_ids),
-                                  self.tvb_connectivity.region_labels)
+                property_per_node(conn[property], conn.get("nodes", self.spiking_nodes_ids), self.region_labels)
         return output
 
     def _population_connection_property_per_node(self, property):
@@ -276,7 +261,7 @@ class SpikingModelBuilder(object):
                 property_per_nodes_connection(conn[property],
                                               conn.get("source_nodes", self.spiking_nodes_ids),
                                               conn.get("target_nodes", self.spiking_nodes_ids),
-                                              self.spiking_nodes_ids, self.tvb_connectivity.region_labels)
+                                              self.spiking_nodes_ids, self.region_labels)
         return output
 
     @property
@@ -424,7 +409,6 @@ class SpikingModelBuilder(object):
                 this_pop = "%s_nodes" % pop
                 if connections[this_pop] is None:
                     _nodes_connections[i_conn][this_pop] = self.spiking_nodes_ids
-        self.tvb_connectivity.configure()
         self._nodes_connections = _nodes_connections
         return self._nodes_connections
 
