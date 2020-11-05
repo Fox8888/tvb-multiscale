@@ -435,7 +435,7 @@ class SpikingModelBuilder(object):
                 neurons_fun = property_to_fun(neurons_fun)
             # Defaults in arrays:
             shape = (len(spiking_nodes),)
-            receptor_type = np.tile(self.default_devices_connection["receptor_type"], shape)
+            receptor_type = np.tile(self.default_devices_connection["receptor_type"], shape).astype("O")
             # weights and delays might be dictionaries for distributions:
             weights = np.ones(shape).astype("O")
             delays = np.zeros(shape).astype("O")
