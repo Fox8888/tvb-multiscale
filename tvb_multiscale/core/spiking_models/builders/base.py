@@ -72,11 +72,11 @@ class SpikingModelBuilder(object):
         self.spiking_nodes_ids = np.unique(spiking_nodes_ids)
         number_of_spiking_nodes = self.number_of_spiking_nodes
         self.tvb_dt = tvb_params.get("dt", 0.1)
-        conn_shape = (number_of_spiking_nodes, number_of_spiking_nodes)
+        self.number_of_regions = tvb_params.get("number_of_regions", number_of_spiking_nodes)
+        conn_shape = (self.number_of_regions, self.number_of_regions)
         dummy_conn = np.ones(conn_shape)
         self.tvb_weights = tvb_params.get("weights", 0.0 * dummy_conn)
-        self.tvb_delays = tvb_params.get("delays", self.tvb.dt * dummy_conn)
-        self.number_of_regions = tvb_params.get("number_of_regions", number_of_spiking_nodes)
+        self.tvb_delays = tvb_params.get("delays", self.tvb_dt * dummy_conn)
         self.region_labels = tvb_params.get("region_labels",
                                             np.array(["Region-%d" % i_region
                                                       for i_region in range(self.number_of_regions)]))

@@ -35,10 +35,11 @@ class NESTModelBuilder(SpikingModelBuilder):
     def __init__(self, nest_nodes_ids, nest_instance=None, config=CONFIGURED, logger=LOG, **tvb_params):
         super(NESTModelBuilder, self).__init__(nest_nodes_ids, config, logger, **tvb_params)
         # Setting or loading a nest instance:
-        if nest_instance is not None:
-            self.nest_instance = nest_instance
-        else:
-            self.nest_instance = load_nest(self.config, self.logger)
+        self.nest_instance = nest_instance
+        # if nest_instance is not None:
+        #     self.nest_instance = nest_instance
+        # else:
+        #     self.nest_instance = load_nest(self.config, self.logger)
 
         self._spiking_brain = NESTBrain()
 
@@ -61,6 +62,8 @@ class NESTModelBuilder(SpikingModelBuilder):
         self.default_devices_connection["nodes"] = None
 
     def _configure_nest_kernel(self):
+        if not self.nest_instance:
+            self.nest_instance = load_nest()
         self.nest_instance.ResetKernel()  # This will restart NEST!
         self._update_spiking_dt()
         self._update_default_min_delay()

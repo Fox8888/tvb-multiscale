@@ -10,10 +10,10 @@ class WilsonCowanBuilder(DefaultExcIOInhIBuilder):
     def __init__(self, nest_nodes_ids, nest_instance=None, config=CONFIGURED, set_defaults=True, **tvb_params):
         super(WilsonCowanBuilder, self).__init__(nest_nodes_ids, nest_instance, config, **tvb_params)
 
-        self.w_ee = self.weight_fun(self.tvb_model.c_ee[0].item())
-        self.w_ei = self.weight_fun(self.tvb_model.c_ei[0].item())
-        self.w_ie = self.weight_fun(-self.tvb_model.c_ie[0].item())
-        self.w_ii = self.weight_fun(-self.tvb_model.c_ii[0].item())
+        # self.w_ee = self.weight_fun(self.tvb_model.c_ee[0].item())
+        # self.w_ei = self.weight_fun(self.tvb_model.c_ei[0].item())
+        # self.w_ie = self.weight_fun(-self.tvb_model.c_ie[0].item())
+        # self.w_ii = self.weight_fun(-self.tvb_model.c_ii[0].item())
 
         if set_defaults:
             self.set_defaults()
