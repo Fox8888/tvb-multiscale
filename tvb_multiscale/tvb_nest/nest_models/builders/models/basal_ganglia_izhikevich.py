@@ -33,6 +33,10 @@ class BasalGangliaIzhikevichBuilder(NESTModelBuilder):
         # if we use Reduced Wong Wang model, we also need to multiply with the global coupling constant G:
         self.global_coupling_scaling *= tvb_params.pop("G", 20.0)
         super(BasalGangliaIzhikevichBuilder, self).__init__(nest_nodes_ids, nest_instance, config, **tvb_params)
+    output_devices_record_to = "ascii"
+
+    def __init__(self, tvb_simulator, nest_nodes_ids, nest_instance=None, config=CONFIGURED):
+        super(BasalGangliaIzhikevichBuilder, self).__init__(tvb_simulator, nest_nodes_ids, nest_instance, config)
         self.default_population["model"] = "izhikevich_hamker"
 
         # Common order of neurons' number per population:
@@ -119,13 +123,16 @@ class BasalGangliaIzhikevichBuilder(NESTModelBuilder):
         for pop in self.populations:
             connections = OrderedDict({})
             connections[pop["label"] + "_spikes"] = pop["label"]
+            params = dict(self.config.NEST_OUTPUT_DEVICES_PARAMS_DEF["spike_recorder"])
+            params["record_to"] = self.output_devices_record_to
             self.output_devices.append(
-                {"model": "spike_recorder", "params": {},
+                {"model": "spike_recorder", "params": params,
                  "connections": connections, "nodes": pop["nodes"]})  # None means apply to "all"
 
         # Labels have to be different for every connection to every distinct population
-        params = {"interval": 1.0,
-                  'record_from': ["V_m", "U_m", "I_syn", "I_syn_ex", "I_syn_in", "g_L", "g_AMPA", "g_GABA_A"]}
+        params = dict(self.config.NEST_OUTPUT_DEVICES_PARAMS_DEF["multimeter"])
+        params.update({"interval": 1.0, "record_to": self.output_devices_record_to,
+                       'record_from': ["V_m", "U_m", "I_syn", "I_syn_ex", "I_syn_in", "g_L", "g_AMPA", "g_GABA_A"]})
         for pop in self.populations:
             connections = OrderedDict({})
             #               label    <- target population

@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+
+from copy import deepcopy
+
 import numpy as np
 
 from tvb_multiscale.tvb_nest.config import CONFIGURED, initialize_logger
@@ -13,6 +16,7 @@ from tvb_multiscale.core.spiking_models.builders.base import SpikingModelBuilder
 
 from tvb.contrib.scripts.utils.log_error_utils import raise_value_error
 from tvb.contrib.scripts.utils.data_structures_utils import ensure_list
+from tvb.contrib.scripts.utils.file_utils import safe_makedirs
 
 
 LOG = initialize_logger(__name__)
@@ -44,6 +48,9 @@ class NESTModelBuilder(SpikingModelBuilder):
         self._spiking_brain = NESTBrain()
 
         # Setting NEST defaults from config
+
+        self.default_kernel_config = self.config.DEFAULT_NEST_KERNEL_CONFIG
+
         self.default_population = {"model": self.config.DEFAULT_MODEL, "scale": 1, "params": {}, "nodes": None}
 
         self.default_synaptic_weight_scaling = \
@@ -64,11 +71,20 @@ class NESTModelBuilder(SpikingModelBuilder):
     def _configure_nest_kernel(self):
         if not self.nest_instance:
             self.nest_instance = load_nest()
+        # Setting or loading a nest instance:
+        if self.nest_instance is None:
+            self.nest_instance = load_nest(self.config, self.logger)
         self.nest_instance.ResetKernel()  # This will restart NEST!
+        self.nest_instance.set_verbosity(self.config.NEST_VERBOCITY)  # don't print all messages from NEST
+        kernel_config = deepcopy(self.default_kernel_config)
+        # Printing the time progress should only be used when the simulation is run on a local machine:
+        #  kernel_config["print_time"] = self.nest_instance.Rank() == 0
         self._update_spiking_dt()
         self._update_default_min_delay()
-        self.nest_instance.set_verbosity(self.config.NEST_VERBOCITY)  # don't print all messages from NEST
-        self.nest_instance.SetKernelStatus({"resolution": self.spiking_dt, "print_time": self.config.NEST_PRINT_TIME})
+        kernel_config["resolution"] = self.spiking_dt
+        if "data_path" in kernel_config.keys():
+            safe_makedirs(kernel_config["data_path"])  # Make sure this folder exists
+        self.nest_instance.SetKernelStatus(kernel_config)
 
     def _compile_install_nest_module(self, module):
         """This method will try to install the input NEST module.
